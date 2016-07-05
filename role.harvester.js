@@ -1,8 +1,7 @@
-var roleRepairer = require('role.repairer');
+var roleUpgrader = require('role.upgrader');
 
 var roleHarvester = {
 
-    /** @param {Creep} creep **/
     run: function(creep) {
         
 	    if(creep.memory.working && creep.carry.energy == 0) {
@@ -15,27 +14,43 @@ var roleHarvester = {
 	    }
         
         if(creep.memory.working) {
-            var target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+            var target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
                 filter: (s) => (s.structureType == STRUCTURE_SPAWN 
-                            || s.structureType == STRUCTURE_EXTENSION
-                            || s.structureType == STRUCTURE_TOWER) 
-                            && s.energy < s.energyCapacity
+                             || s.structureType == STRUCTURE_EXTENSION
+                             || s.structureType == STRUCTURE_TOWER) 
+                             && s.energy < s.energyCapacity
             });
+            var stores = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+                filter: (s) => s.structureType == STRUCTURE_STORAGE
+                            && s.store[RESOURCE_ENERGY] < s.storeCapacity
+            });
+            
             if(target != undefined) {
                 if(creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(target);
                 }
-            } else {
-                roleRepairer.run(creep);
+            } else if(stores != undefined) {
+                if(creep.transfer(stores, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(stores);
+                }
+            }
+            //If everything is full, help the upgraders
+            else {
+                roleUpgrader.run(creep);
             }
         }
         else {
-            var toFull = creep.carryCapacity - creep.carry.energy;
-            var source = creep.pos.findClosestByPath(FIND_SOURCES, {
-                filter: (e) => e.energy > toFull
-            });
-            if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
-                creep.moveTo(source);
+            var pickups = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);
+            if(pickups) {
+                if(creep.pickup(pickups) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(pickups);
+                }
+            }
+            else {
+                var source = creep.room.find(FIND_SOURCES);
+                if(creep.harvest(source[0]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(source[0]);
+                }
             }
         }
 	}
